@@ -1,27 +1,47 @@
 #include "CameraSource.hpp"
 
-camera::camera () { count = 0;type_source = NONE;videoState = false;imageState = false;/* throw if no camera conected Location = 0;*/}
+camera::camera () 
+{ 
+	count = 0;
+	type_source = NONE;
+	videoState = false;
+	imageState = false;
+	Fps = 20;
+	got = false;
+/* throw if no camera conected Location = 0;*/
+}
 camera::~camera(){stop();}
 
 void camera::get_frames(Mat *dst, VideoCapture *cap)
 {
 	for(;;)
-	{
-		
+	{ 
+		high_resolution_clock::time_point t1 = high_resolution_clock::now();
 		if(cap->isOpened())
 		{
 			Mat rdimg;
 			if(type_source == USB)
 			{
-				*cap>>rdimg;
-				mtx_.lock();*dst = rdimg;mtx_.unlock();
+				//if(!cap->grab())cout<<"can't get!"<<endl;
+				//else
+				{
+					*cap>>rdimg;
+					mtx_.lock();
+					got = true;
+					//*cap>>*dst;
+					*dst = rdimg;
+					mtx_.unlock();
+				}
 			}
 			else if(type_source == IP)
 			{
 				Cap.read(rdimg);
 				mtx_.lock();*dst = rdimg;mtx_.unlock();
 			}
-			if(videoState == true)videoOut.write(rdimg);
+			if(videoState == true)
+			{
+				videoOut.write(rdimg);
+			}
 			if(imageState == true)
 			{
 				imwrite(outImage + to_string(count) + ".jpg",rdimg);
@@ -30,9 +50,17 @@ void camera::get_frames(Mat *dst, VideoCapture *cap)
 		}
 		else
 		{
+			assert(0);
 			//*dst = imread ("test-1-opencv-with-webcam.png");
 		}
-		usleep(40000);
+		high_resolution_clock::time_point t2 = high_resolution_clock::now();
+		 auto duration = std::chrono::duration_cast<std::chrono::microseconds>( t2 - t1 ).count();
+		 //cout <<"dur: "<<duration<<endl;
+		 int dur = ((1000000/Fps) - duration);// + 3000;
+		 //cout<<"dur: "<<dur<<","<<Fps<<","<<duration<<endl;
+		 if(dur < 1000) dur = 1000;
+		 
+		usleep(dur);
 	}
 }
 
@@ -117,7 +145,6 @@ void camera::open_ip(string location)
 		cout<<"IP address: "<<location<<" opened succesfully!"<<endl;
 		Cap.read(Img);
 		Frame_graber.reset(new thread(&camera::get_frames, this ,&Img, &Cap));
-		//Frame_graber = new std::thread(&camera::get_frames, this ,&Img, &Cap);
 	}
 }
 
@@ -154,14 +181,21 @@ void camera::open_image(string location)
     return state;
 }*/
 
-void camera::get (Mat &dst)
+bool camera::get (Mat &dst)
 { // throw if no camera conected
-
+	bool available = true;
 	if((type_source == USB) || (type_source == IP))
 	{
-		mtx_.lock();
-		dst = Img.clone();
-		mtx_.unlock();
+		//if(got == true)
+	
+			mtx_.lock();
+			if(got == true)
+			{
+				got = false;
+				dst = Img.clone();
+			}
+			else available = false;//cout<<"NOPE FGT"<<endl;
+			mtx_.unlock();				
 	}
 	else if(type_source == VIDEO)
 	{
@@ -171,11 +205,15 @@ void camera::get (Mat &dst)
    
     if (dst.cols == 0)
     {
+		
+		//assert(0);
 		cout<<"fail to get image"<<endl;
-        state = false;
-        Cap.release ();
-        dst = imread ("test-1-opencv-with-webcam.png");
+        //state = false;
+        //Cap.release ();
+        dst = imread ("grayimg.jpg");
+		//cout<<"nope
     }
+	return available;
 }
 
 void camera::stop()
@@ -226,9 +264,22 @@ void camera::camerai_stop()
 	imageState = false;
 	//videoState = false;
 	//videoOut.close();
+} 
+
+void camera::settings(string jsonSettings)
+{
+	//cout<<"json wow"<<endl;
+	Document jsonData;
+	jsonData.Parse(jsonSettings.c_str());
+	//cout<<jsonData.HasMember("FPS")<<endl;
+	//cout<<"size: "<<jsonData.Size()<<endl;
+	if(jsonData.HasMember("FPS"))
+	{
+		Fps = jsonData["FPS"].GetDouble();
+		cout<<"has member: "<<jsonData["FPS"].GetDouble()<<endl;
+	}
+	
 }
-
-
 
 /*void camera::get_IPcamera(Mat &dst)
 {

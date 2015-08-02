@@ -17,9 +17,16 @@
 #include <thread>
 #include <mutex>
 #include <assert.h>
+#include <chrono>
+
+#include "rapidjson/document.h"
+#include "rapidjson/writer.h"
+#include "rapidjson/stringbuffer.h"
 
 using namespace std;
+using namespace std::chrono;
 using namespace cv;
+using namespace rapidjson;
 
 #define NONE 	0
 #define USB 	1
@@ -31,13 +38,19 @@ using namespace cv;
 class camera
 {
     private:
+	double Fps;
+	float CaptureVideoInterval;
+	
 	int type_source;
+	bool state;
+	bool videoState;
+	bool imageState;
+	bool got;
+	
+	
     VideoCapture Cap;
     int Location;
     Mat Img;
-    bool state;
-	bool videoState;
-	bool imageState;
 	string outImage;
 	unsigned long int count;
 
@@ -67,7 +80,8 @@ class camera
 	void open_ip(string location);//rename open stream
 	void open_video(string location);
 	void open_image(string location);
-    void get (Mat &dst);
+	
+    bool get(Mat &dst);
 
 	void stop();
 
@@ -76,6 +90,10 @@ class camera
 
 	void camerav_start(string name);
 	void camerav_stop();
+	
+	// to make vvv
+	void start();
+	void settings(string jsonSettings);
 };
 
 #endif
