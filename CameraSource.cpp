@@ -1,3 +1,4 @@
+#include "stdafx.h"
 #include "CameraSource.hpp"
 
 camera::camera () 
@@ -22,21 +23,23 @@ void camera::get_frames(Mat *dst, VideoCapture *cap)
 			Mat rdimg;
 			if(type_source == USB)
 			{
-				//if(!cap->grab())cout<<"can't get!"<<endl;
-				//else
 				{
 					*cap>>rdimg;
 					mtx_.lock();
 					got = true;
-					//*cap>>*dst;
 					*dst = rdimg;
 					mtx_.unlock();
 				}
 			}
 			else if(type_source == IP)
-			{
+			{//mpeg mode
 				Cap.read(rdimg);
-				mtx_.lock();*dst = rdimg;mtx_.unlock();
+				mtx_.lock();
+				if (!rdimg.empty()) {//don't give empty frames
+				*dst = rdimg;
+				got = true;
+				}
+				mtx_.unlock();
 			}
 			if(videoState == true)
 			{
@@ -60,7 +63,8 @@ void camera::get_frames(Mat *dst, VideoCapture *cap)
 		 //cout<<"dur: "<<dur<<","<<Fps<<","<<duration<<endl;
 		 if(dur < 1000) dur = 1000;
 		 
-		usleep(dur);
+		 std::this_thread::sleep_for(std::chrono::microseconds(dur));
+		//usleep(dur);
 	}
 }
 
@@ -128,7 +132,7 @@ void camera::open_usb()
     // assert(tmp.cols > 0);
 }
 
-void camera::open_ip(string location)
+Mat camera::open_ip(string location)
 {
 	cout<<type_source<<endl;
 	assert(type_source == NONE);
@@ -144,8 +148,10 @@ void camera::open_ip(string location)
 	{
 		cout<<"IP address: "<<location<<" opened succesfully!"<<endl;
 		Cap.read(Img);
+		//Cap.open(location);
 		Frame_graber.reset(new thread(&camera::get_frames, this ,&Img, &Cap));
 	}
+	return Img;
 }
 
 void camera::open_video(string location)
@@ -186,15 +192,13 @@ bool camera::get (Mat &dst)
 	bool available = true;
 	if((type_source == USB) || (type_source == IP))
 	{
-		//if(got == true)
-	
 			mtx_.lock();
 			if(got == true)
 			{
 				got = false;
 				dst = Img.clone();
 			}
-			else available = false;//cout<<"NOPE FGT"<<endl;
+			else available = false;
 			mtx_.unlock();				
 	}
 	else if(type_source == VIDEO)
@@ -207,10 +211,10 @@ bool camera::get (Mat &dst)
     {
 		
 		//assert(0);
-		cout<<"fail to get image"<<endl;
+		//>>>cout<<"fail to get image"<<endl;
         //state = false;
         //Cap.release ();
-        dst = imread ("grayimg.jpg");
+        //>>>dst = imread ("grayimg.jpg");
 		//cout<<"nope
     }
 	return available;

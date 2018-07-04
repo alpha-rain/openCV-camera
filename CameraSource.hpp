@@ -12,8 +12,8 @@
 #include "opencv2/objdetect/objdetect.hpp"
 #include "opencv2/opencv.hpp"
 
-#include <unistd.h>
-#include <boost/timer/timer.hpp>
+//#include <unistd.h>
+//#include <boost/timer/timer.hpp>
 #include <thread>
 #include <mutex>
 #include <assert.h>
@@ -77,7 +77,7 @@ class camera
 
 	void open_usb();
 	void open_usb(int location);
-	void open_ip(string location);//rename open stream
+	Mat open_ip(string location);//rename open stream
 	void open_video(string location);
 	void open_image(string location);
 	
